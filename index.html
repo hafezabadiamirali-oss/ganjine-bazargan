@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>گنجینه‌ی بازرگان</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#100b08">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+  html, body {
+    width:100%; height:100%;
+    background:#100b08;
+    overflow:hidden;
+    font-family:-apple-system,'Segoe UI',Tahoma,sans-serif;
+    color:#eee3cf;
+  }
+  #app { position:fixed; inset:0; display:flex; flex-direction:column; }
+
+  /* top bar */
+  #topBar {
+    display:flex; justify-content:center; gap:18px;
+    padding:12px 14px 8px;
+    border-bottom:1px solid rgba(216,161,59,0.2);
+  }
+  .curr { display:flex; align-items:center; gap:6px; font-size:14.5px; font-weight:700; }
+  .curr .dot { width:9px; height:9px; border-radius:50%; }
+  .coinDot { background:#d8a13b; }
+  .jewelDot { background:#8b5fc9; }
+
+  /* map */
+  #cityMap {
+    position:relative;
+    height:74px;
+    margin:6px 14px 2px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  #cityMap .line { position:absolute; left:6%; right:6%; top:50%; height:2px; background:rgba(216,161,59,0.25); z-index:0; }
+  .cityNode {
+    position:relative; z-index:2;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    cursor:pointer;
+  }
+  .cityNode .pin {
+    width:16px; height:16px; border-radius:50%;
+    background:#3a281a; border:2px solid #d8a13b;
+    transition:all 0.15s ease;
+  }
+  .cityNode.active .pin { background:#d8a13b; box-shadow:0 0 10px rgba(216,161,59,0.7); }
+  .cityNode .cname { font-size:11px; color:#c9b48b; }
+  .cityNode.active .cname { color:#eee3cf; font-weight:700; }
+  .caravanDot {
+    position:absolute; top:50%; width:12px; height:12px; border-radius:50%;
+    transform:translate(-50%,-50%);
+    box-shadow:0 0 8px rgba(0,0,0,0.5);
+    z-index:3;
+    transition:left 0.4s linear;
+  }
+
+  /* tab content */
+  #tabContent {
+    flex:1; overflow-y:auto;
+    padding:10px 16px 90px;
+  }
+  .sectionTitle { font-size:13px; color:#d8a13b; font-weight:700; margin:14px 0 8px; }
+  .card {
+    background:rgba(255,255,255,0.045);
+    border:1px solid rgba(216,161,59,0.18);
+    border-radius:12px;
+    padding:12px 14px;
+    margin-bottom:10px;
+  }
+  .rowBetween { display:flex; justify-content:space-between; align-items:center; }
+  .muted { color:#a08a63; font-size:12px; }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  .chip {
+    padding:7px 14px; border-radius:999px; font-size:12.5px;
+    background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14);
+    color:#c9b48b;
+  }
+  .chip.selected { background:rgba(216,161,59,0.22); border-color:#d8a13b; color:#eee3cf; font-weight:700; }
+
+  .goodRow {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 4px; border-bottom:1px solid rgba(255,255,255,0.06);
+  }
+  .goodRow:last-child { border-bottom:none; }
+  .goodName { font-size:13.5px; }
+  .goodPrice { font-size:12.5px; color:#d8a13b; }
+  .goodRow.selected { background:rgba(216,161,59,0.08); border-radius:8px; }
+
+  .stepper { display:flex; align-items:center; gap:10px; justify-content:center; margin:12px 0; }
+  .stepBtn {
+    width:38px; height:38px; border-radius:50%;
+    background:rgba(216,161,59,0.18); border:1px solid rgba(216,161,59,0.4);
+    font-size:18px; color:#eee3cf; display:flex; align-items:center; justify-content:center;
+  }
+  .stepVal { font-size:18px; font-weight:700; min-width:46px; text-align:center; }
+
+  .primaryBtn {
+    width:100%;
+    background:linear-gradient(135deg,#1f8a86,#d8a13b);
+    border:none; color:#100b08; font-size:15px; font-weight:700;
+    padding:13px; border-radius:12px; margin-top:6px;
+  }
+  .primaryBtn:disabled { opacity:0.4; }
+  .ghostBtn {
+    background:rgba(139,95,201,0.18); border:1px solid rgba(139,95,201,0.5);
+    color:#eee3cf; font-size:13px; font-weight:700; padding:9px 16px; border-radius:10px;
+  }
+
+  .progressWrap { height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden; margin:8px 0; }
+  .progressBar { height:100%; background:linear-gradient(90deg,#1f8a86,#d8a13b); }
+
+  .skinGrid { display:flex; gap:10px; flex-wrap:wrap; }
+  .skinSwatch {
+    width:52px; height:52px; border-radius:50%;
+    border:3px solid rgba(255,255,255,0.15);
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px; color:#fff; text-align:center; position:relative;
+  }
+  .skinSwatch.active { border-color:#eee3cf; }
+  .skinSwatch .lock { position:absolute; inset:0; border-radius:50%; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; font-size:16px; }
+
+  #tabBar {
+    position:fixed; bottom:0; left:0; right:0;
+    display:flex;
+    background:rgba(16,11,8,0.96);
+    border-top:1px solid rgba(216,161,59,0.25);
+    z-index:20;
+  }
+  .tabBtn {
+    flex:1; padding:12px 0 14px; text-align:center; font-size:13px; color:#8a7658;
+  }
+  .tabBtn.active { color:#d8a13b; font-weight:700; }
+
+  #toast {
+    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+    background:rgba(15,10,8,0.92);
+    border:1px solid rgba(216,161,59,0.45);
+    padding:14px 22px; border-radius:10px;
+    font-size:14.5px; text-align:center; max-width:280px;
+    opacity:0; transition:opacity 0.3s ease; z-index:50; pointer-events:none;
+  }
+  #toast.show { opacity:1; }
+
+  #wheelOverlay {
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(16,11,8,0.9); z-index:60; flex-direction:column; gap:18px;
+  }
+  #wheelOverlay.show { display:flex; }
+  #wheelDial {
+    width:180px; height:180px; border-radius:50%;
+    background:conic-gradient(#1f8a86 0deg 51deg,#d8a13b 51deg 116deg,#8b5fc9 116deg 138deg,#b5432f 138deg 160deg,#4f9e5a 160deg 196deg,#e0b872 196deg 231deg,#3f6fc9 231deg 360deg);
+    border:4px solid rgba(255,255,255,0.15);
+    transition:transform 3s cubic-bezier(.2,.8,.2,1);
+    position:relative;
+  }
+  #wheelPointer {
+    width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:18px solid #eee3cf;
+  }
+  #wheelResultText { font-size:15px; color:#eee3cf; min-height:20px; text-align:center; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="topBar">
+    <div class="curr"><span class="dot coinDot"></span><span id="coinsVal">۰</span></div>
+    <div class="curr"><span class="dot jewelDot"></span><span id="jewelsVal">۰</span></div>
+  </div>
+
+  <div id="cityMap"><div class="line"></div></div>
+
+  <div id="tabContent"></div>
+
+  <div id="tabBar">
+    <div class="tabBtn active" data-tab="market">بازار</div>
+    <div class="tabBtn" data-tab="caravans">کاروان‌ها</div>
+    <div class="tabBtn" data-tab="shop">فروشگاه</div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="wheelOverlay">
+  <div id="wheelPointer"></div>
+  <div id="wheelDial"></div>
+  <div id="wheelResultText"></div>
+  <button class="ghostBtn" id="closeWheelBtn" style="display:none;">باشه</button>
+</div>
+
+<script>
+/* ============ DATA ============ */
+const GOODS = [
+  { id:0, name:'فرش',    base:150 },
+  { id:1, name:'زعفران', base:90  },
+  { id:2, name:'مس',     base:20  },
+  { id:3, name:'ابریشم', base:40  },
+  { id:4, name:'ادویه',  base:30  }
+];
+const CITIES = [
+  { id:0, name:'یزد' },
+  { id:1, name:'تبریز' },
+  { id:2, name:'اصفهان' },
+  { id:3, name:'کاشان' }
+];
+// relation: 'cheap' | 'expensive' | 'neutral'
+const RELATION = {
+  0: { 0:'cheap', 1:'expensive' },
+  1: { 3:'cheap', 0:'expensive' },
+  2: { 2:'cheap', 3:'expensive' },
+  3: { 1:'cheap', 2:'expensive' }
+};
+const DIST = [
+  [0,70,40,35],
+  [70,0,50,60],
+  [40,50,0,30],
+  [35,60,30,0]
+];
+const CAPACITY = 30;
+const SKINS = [
+  { id:'teal',    color:'#2fb6b0', cost:0,  label:'فیروزه‌ای' },
+  { id:'gold',    color:'#d8a13b', cost:25, label:'طلایی' },
+  { id:'crimson', color:'#b5432f', cost:25, label:'سرخ' },
+  { id:'violet',  color:'#8b5fc9', cost:25, label:'بنفش' }
+];
+const CARAVAN_SLOT_COSTS = [40, 80, 150];
+const JEWEL_PACKAGES = [
+  { jewels:50,  price:'۹۹,۰۰۰ تومان' },
+  { jewels:120, price:'۱۹۹,۰۰۰ تومان' },
+  { jewels:300, price:'۴۴۹,۰۰۰ تومان' }
+];
+const WHEEL_REWARDS = [
+  { type:'coins',  amount:150, weight:35, label:'۱۵۰ سکه' },
+  { type:'coins',  amount:400, weight:18, label:'۴۰۰ سکه' },
+  { type:'jewels', amount:5,   weight:15, label:'۵ جواهر' },
+  { type:'jewels', amount:15,  weight:6,  label:'۱۵ جواهر' },
+  { type:'skin',   id:'gold',    weight:8, label:'پوسته‌ی طلایی' },
+  { type:'skin',   id:'crimson', weight:8, label:'پوسته‌ی سرخ' },
+  { type:'buff',   id:'fast5', weight:10, label:'سرعت دوبرابر (۵ دقیقه)' }
+];
+
+/* ============ STATE ============ */
+const SAVE_KEY = 'simorgh-merchant-save-v1';
+let state = loadState() || {
+  coins: 600,
+  jewels: 20,
+  viewingCityId: 0,
+  caravans: [ { id:0, cityId:0, status:'idle', destCityId:null, originCityId:null, departAt:null, arriveAt:null, goodId:null, qty:0 } ],
+  ownedSkins: ['teal'],
+  activeSkin: 'teal',
+  speedBuffUntil: 0,
+  selectedDest: null,
+  selectedGood: null,
+  selectedQty: 0
+};
+
+function saveState() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+
+/* ============ AUDIO ============ */
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function chime(freqs, vol = 0.28) {
+  ensureAudio();
+  freqs.forEach((f, i) => {
+    const t0 = audioCtx.currentTime + i * 0.09;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = f;
+    gain.gain.setValueAtTime(0.001, t0);
+    gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.35);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t0); osc.stop(t0 + 0.4);
+  });
+}
+function vibrate(p) { if (navigator.vibrate) navigator.vibrate(p); }
+
+/* ============ TOAST ============ */
+const toastEl = document.getElementById('toast');
+let toastTimer = null;
+function showToast(text, dur = 2200) {
+  toastEl.textContent = text;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), dur);
+}
+
+/* ============ PRICE ============ */
+function relationAt(cityId, goodId) {
+  return (RELATION[cityId] && RELATION[cityId][goodId]) || 'neutral';
+}
+function priceAt(cityId, goodId) {
+  const rel = relationAt(cityId, goodId);
+  const mult = rel === 'cheap' ? 0.55 : rel === 'expensive' ? 1.85 : 1.0;
+  const fluct = 1 + 0.08 * Math.sin(Date.now() / 45000 + cityId * 13 + goodId * 7);
+  return Math.max(1, Math.round(GOODS[goodId].base * mult * fluct));
+}
+function travelSeconds(fromId, toId) {
+  let secs = DIST[fromId][toId];
+  if (Date.now() < state.speedBuffUntil) secs = Math.round(secs / 2);
+  return secs;
+}
+function fmt(n) { return n.toLocaleString('fa-IR'); }
+
+/* ============ MAP RENDER ============ */
+const cityMapEl = document.getElementById('cityMap');
+function renderMap() {
+  Array.from(cityMapEl.querySelectorAll('.cityNode, .caravanDot')).forEach(e => e.remove());
+  CITIES.forEach(city => {
+    const node = document.createElement('div');
+    node.className = 'cityNode' + (state.viewingCityId === city.id ? ' active' : '');
+    node.innerHTML = `<div class="pin"></div><div class="cname">${city.name}</div>`;
+    node.addEventListener('click', () => { state.viewingCityId = city.id; renderAll(); });
+    cityMapEl.appendChild(node);
+  });
+  const nodeWidth = 100 / CITIES.length;
+  state.caravans.forEach((c, idx) => {
+    const dot = document.createElement('div');
+    dot.className = 'caravanDot';
+    const skin = SKINS.find(s => s.id === state.activeSkin) || SKINS[0];
+    dot.style.background = skin.color;
+    dot.style.top = (26 + idx * 10) + 'px';
+    let posPct;
+    if (c.status === 'traveling') {
+      const prog = Math.min(1, Math.max(0, (Date.now() - c.departAt) / (c.arriveAt - c.departAt)));
+      posPct = (c.originCityId / (CITIES.length - 1)) * 100 + prog * ((c.destCityId - c.originCityId) / (CITIES.length - 1)) * 100;
+    } else {
+      posPct = (c.cityId / (CITIES.length - 1)) * 100;
+    }
+    dot.style.left = posPct + '%';
+    cityMapEl.appendChild(dot);
+  });
+}
+
+/* ============ MARKET TAB ============ */
+function renderMarket() {
+  const el = document.getElementById('tabContent');
+  const viewCity = CITIES[state.viewingCityId];
+  const idleHere = state.caravans.find(c => c.status === 'idle' && c.cityId === state.viewingCityId);
+
+  let html = `<div class="sectionTitle">بازار ${viewCity.name}</div>`;
+  html += `<div class="card">`;
+  GOODS.forEach(g => {
+    html += `<div class="goodRow"><span class="goodName">${g.name}</span><span class="goodPrice">${fmt(priceAt(viewCity.id, g.id))} سکه</span></div>`;
+  });
+  html += `</div>`;
+
+  if (!idleHere) {
+    const others = state.caravans.filter(c => c.cityId !== state.viewingCityId || c.status !== 'idle');
+    html += `<div class="card"><div class="muted">کاروانی اینجا برای بارگیری نیست.</div>`;
+    state.caravans.forEach((c, i) => {
+      if (c.status === 'traveling') {
+        const remain = Math.max(0, Math.ceil((c.arriveAt - Date.now()) / 1000));
+        html += `<div class="muted" style="margin-top:6px">کاروان ${i+1}: در راه به ${CITIES[c.destCityId].name} — ${remain} ثانیه</div>`;
+      } else if (c.status === 'arrived') {
+        html += `<div class="muted" style="margin-top:6px">کاروان ${i+1}: رسیده به ${CITIES[c.cityId].name}، منتظر فروشه</div>`;
+      } else if (c.cityId !== state.viewingCityId) {
+        html += `<div class="muted" style="margin-top:6px">کاروان ${i+1}: در ${CITIES[c.cityId].name}</div>`;
+      }
+    });
+    html += `</div>`;
+    el.innerHTML = html;
+    return;
+  }
+
+  html += `<div class="sectionTitle">مقصد رو انتخاب کن</div><div class="chips" id="destChips">`;
+  CITIES.forEach(c => {
+    if (c.id === viewCity.id) return;
+    html += `<div class="chip ${state.selectedDest === c.id ? 'selected' : ''}" data-dest="${c.id}">${c.name} (${travelSeconds(viewCity.id, c.id)} ثانیه)</div>`;
+  });
+  html += `</div>`;
+
+  if (state.selectedDest !== null) {
+    html += `<div class="sectionTitle">کالا رو انتخاب کن</div><div class="card" id="goodsList">`;
+    GOODS.forEach(g => {
+      const buyP = priceAt(viewCity.id, g.id);
+      const sellP = priceAt(state.selectedDest, g.id);
+      const profit = sellP - buyP;
+      html += `<div class="goodRow ${state.selectedGood === g.id ? 'selected' : ''}" data-good="${g.id}">
+        <span class="goodName">${g.name}</span>
+        <span class="goodPrice">خرید ${fmt(buyP)} ← فروش ${fmt(sellP)} <span style="color:${profit>=0?'#4f9e5a':'#b5432f'}">(${profit>=0?'+':''}${fmt(profit)})</span></span>
+      </div>`;
+    });
+    html += `</div>`;
+
+    if (state.selectedGood !== null) {
+      const buyP = priceAt(viewCity.id, state.selectedGood);
+      const maxQty = Math.min(CAPACITY, Math.floor(state.coins / buyP));
+      if (state.selectedQty > maxQty) state.selectedQty = maxQty;
+      const totalCost = buyP * state.selectedQty;
+      const sellP = priceAt(state.selectedDest, state.selectedGood);
+      const totalProfit = (sellP - buyP) * state.selectedQty;
+
+      html += `<div class="card">
+        <div class="stepper">
+          <div class="stepBtn" id="qtyMinus">−</div>
+          <div class="stepVal">${state.selectedQty}</div>
+          <div class="stepBtn" id="qtyPlus">+</div>
+        </div>
+        <div class="rowBetween muted"><span>هزینه</span><span>${fmt(totalCost)} سکه</span></div>
+        <div class="rowBetween muted"><span>سود تخمینی</span><span style="color:${totalProfit>=0?'#4f9e5a':'#b5432f'}">${totalProfit>=0?'+':''}${fmt(totalProfit)} سکه</span></div>
+        <button class="primaryBtn" id="sendBtn" ${state.selectedQty<=0?'disabled':''}>بارگیری و حرکت به ${CITIES[state.selectedDest].name}</button>
+      </div>`;
+    }
+  }
+
+  el.innerHTML = html;
+
+  el.querySelectorAll('[data-dest]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      state.selectedDest = parseInt(chip.dataset.dest);
+      state.selectedGood = null;
+      state.selectedQty = 0;
+      renderMarket();
+    });
+  });
+  el.querySelectorAll('[data-good]').forEach(row => {
+    row.addEventListener('click', () => {
+      state.selectedGood = parseInt(row.dataset.good);
+      state.selectedQty = 1;
+      renderMarket();
+    });
+  });
+  const minus = document.getElementById('qtyMinus');
+  const plus = document.getElementById('qtyPlus');
+  if (minus) minus.addEventListener('click', () => { state.selectedQty = Math.max(0, state.selectedQty - 1); renderMarket(); });
+  if (plus) plus.addEventListener('click', () => {
+    const buyP = priceAt(viewCity.id, state.selectedGood);
+    const maxQty = Math.min(CAPACITY, Math.floor(state.coins / buyP));
+    state.selectedQty = Math.min(maxQty, state.selectedQty + 1);
+    renderMarket();
+  });
+  const sendBtn = document.getElementById('sendBtn');
+  if (sendBtn) sendBtn.addEventListener('click', sendCaravan);
+}
+
+function sendCaravan() {
+  const caravan = state.caravans.find(c => c.status === 'idle' && c.cityId === state.viewingCityId);
+  if (!caravan || state.selectedGood === null || state.selectedQty <= 0) return;
+  const buyP = priceAt(state.viewingCityId, state.selectedGood);
+  const cost = buyP * state.selectedQty;
+  if (cost > state.coins) { showToast('سکه‌ت کافی نیست'); return; }
+
+  state.coins -= cost;
+  caravan.status = 'traveling';
+  caravan.originCityId = state.viewingCityId;
+  caravan.destCityId = state.selectedDest;
+  caravan.goodId = state.selectedGood;
+  caravan.qty = state.selectedQty;
+  caravan.departAt = Date.now();
+  caravan.arriveAt = Date.now() + travelSeconds(state.viewingCityId, state.selectedDest) * 1000;
+
+  chime([440, 554]);
+  vibrate(30);
+  showToast('کاروان به راه افتاد!');
+  state.selectedDest = null;
+  state.selectedGood = null;
+  state.selectedQty = 0;
+  saveState();
+  renderAll();
+}
+
+/* ============ CARAVANS TAB ============ */
+function renderCaravans() {
+  const el = document.getElementById('tabContent');
+  let html = `<div class="sectionTitle">کاروان‌های تو</div>`;
+
+  state.caravans.forEach((c, i) => {
+    html += `<div class="card">`;
+    html += `<div class="rowBetween"><b>کاروان ${i + 1}</b><span class="muted">${GOODS.find(g=>g.id===c.goodId)?.name || ''} ${c.qty>0?('× '+c.qty):''}</span></div>`;
+
+    if (c.status === 'idle') {
+      html += `<div class="muted" style="margin-top:6px">در حال استراحت در ${CITIES[c.cityId].name}</div>`;
+    } else if (c.status === 'traveling') {
+      const total = c.arriveAt - c.departAt;
+      const elapsed = Date.now() - c.departAt;
+      const pct = Math.min(100, Math.max(0, (elapsed / total) * 100));
+      const remain = Math.max(0, Math.ceil((c.arriveAt - Date.now()) / 1000));
+      html += `<div class="muted" style="margin-top:6px">در راه به ${CITIES[c.destCityId].name} — ${remain} ثانیه مونده</div>`;
+      html += `<div class="progressWrap"><div class="progressBar" style="width:${pct}%"></div></div>`;
+      const skipCost = Math.max(3, Math.ceil(remain / 8));
+      html += `<button class="ghostBtn" data-skip="${c.id}">⚡ تندتر برو (${skipCost} جواهر)</button>`;
+    } else if (c.status === 'arrived') {
+      const sellP = priceAt(c.cityId, c.goodId);
+      html += `<div class="muted" style="margin-top:6px">رسیده به ${CITIES[c.cityId].name}!</div>`;
+      html += `<button class="primaryBtn" data-sell="${c.id}">بفروش (${fmt(sellP * c.qty)} سکه)</button>`;
+    }
+    html += `</div>`;
+  });
+
+  const nextSlotCost = CARAVAN_SLOT_COSTS[state.caravans.length - 1];
+  if (nextSlotCost) {
+    html += `<div class="card">
+      <div class="rowBetween"><span>کاروان جدید</span><span class="muted">${nextSlotCost} جواهر</span></div>
+      <button class="ghostBtn" id="buyCaravanBtn" style="margin-top:8px;width:100%">خرید کاروان</button>
+    </div>`;
+  }
+
+  el.innerHTML = html;
+
+  el.querySelectorAll('[data-sell]').forEach(btn => {
+    btn.addEventListener('click', () => sellCaravan(parseInt(btn.dataset.sell)));
+  });
+  el.querySelectorAll('[data-skip]').forEach(btn => {
+    btn.addEventListener('click', () => skipTravel(parseInt(btn.dataset.skip)));
+  });
+  const buyCaravanBtn = document.getElementById('buyCaravanBtn');
+  if (buyCaravanBtn) buyCaravanBtn.addEventListener('click', buyCaravanSlot);
+}
+
+function sellCaravan(id) {
+  const c = state.caravans.find(x => x.id === id);
+  if (!c || c.status !== 'arrived') return;
+  const sellP = priceAt(c.cityId, c.goodId);
+  const total = sellP * c.qty;
+  state.coins += total;
+  chime([523, 659, 784]);
+  vibrate(25);
+  showToast(`فروختی: +${fmt(total)} سکه`);
+  c.status = 'idle';
+  c.goodId = null; c.qty = 0; c.destCityId = null; c.originCityId = null; c.departAt = null; c.arriveAt = null;
+  state.viewingCityId = c.cityId;
+  saveState();
+  renderAll();
+}
+
+function skipTravel(id) {
+  const c = state.caravans.find(x => x.id === id);
+  if (!c || c.status !== 'traveling') return;
+  const remain = Math.max(0, Math.ceil((c.arriveAt - Date.now()) / 1000));
+  const cost = Math.max(3, Math.ceil(remain / 8));
+  if (state.jewels < cost) { showToast('جواهر کافی نیست'); return; }
+  state.jewels -= cost;
+  c.arriveAt = Date.now();
+  chime([349, 440]);
+  vibrate(20);
+  showToast('کاروان سریع رسید!');
+  saveState();
+  renderAll();
+}
+
+function buyCaravanSlot() {
+  const cost = CARAVAN_SLOT_COSTS[state.caravans.length - 1];
+  if (!cost) return;
+  if (state.jewels < cost) { showToast('جواهر کافی نیست'); return; }
+  state.jewels -= cost;
+  state.caravans.push({
+    id: state.caravans.length, cityId: 0, status: 'idle',
+    destCityId: null, originCityId: null, departAt: null, arriveAt: null, goodId: null, qty: 0
+  });
+  chime([440, 554, 659]);
+  vibrate([20, 30, 20]);
+  showToast('کاروان جدید اضافه شد!');
+  saveState();
+  renderAll();
+}
+
+/* ============ SHOP TAB ============ */
+function renderShop() {
+  const el = document.getElementById('tabContent');
+  let html = `<div class="sectionTitle">خرید جواهر</div>`;
+  html += `<div class="muted" style="margin-bottom:8px">نسخه‌ی آزمایشی — این خریدها شبیه‌سازی‌شده و رایگانه. برای نسخه‌ی واقعی باید به یه درگاه پرداخت وصل بشه.</div>`;
+  html += `<div class="card">`;
+  JEWEL_PACKAGES.forEach((pkg, i) => {
+    html += `<div class="goodRow"><span class="goodName">💎 ${pkg.jewels} جواهر</span><span class="goodPrice" style="cursor:pointer" data-buyjewel="${i}">${pkg.price}</span></div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="sectionTitle">گردونه‌ی بازار</div>`;
+  html += `<div class="card">
+    <div class="muted" style="margin-bottom:10px">هر چرخش ۱۵ جواهر — سکه، جواهر، پوسته یا سرعت ببر</div>
+    <button class="ghostBtn" id="spinBtn" style="width:100%">🎡 چرخوندن (۱۵ جواهر)</button>
+  </div>`;
+
+  html += `<div class="sectionTitle">پوسته‌ی کاروان</div><div class="card"><div class="skinGrid">`;
+  SKINS.forEach(s => {
+    const owned = state.ownedSkins.includes(s.id);
+    html += `<div class="skinSwatch ${state.activeSkin === s.id ? 'active' : ''}" style="background:${s.color}" data-skin="${s.id}">
+      ${!owned ? `<div class="lock">🔒</div>` : ''}
+    </div>`;
+  });
+  html += `</div><div class="muted" style="margin-top:8px">پوسته‌ی قفل‌شده ۲۵ جواهر</div></div>`;
+
+  el.innerHTML = html;
+
+  el.querySelectorAll('[data-buyjewel]').forEach(elm => {
+    elm.addEventListener('click', () => {
+      const pkg = JEWEL_PACKAGES[parseInt(elm.dataset.buyjewel)];
+      state.jewels += pkg.jewels;
+      chime([659, 784, 988]);
+      vibrate([15, 20, 15]);
+      showToast(`+${pkg.jewels} جواهر اضافه شد (آزمایشی)`);
+      saveState();
+      renderAll();
+    });
+  });
+  const spinBtn = document.getElementById('spinBtn');
+  if (spinBtn) spinBtn.addEventListener('click', openWheel);
+
+  el.querySelectorAll('[data-skin]').forEach(elm => {
+    elm.addEventListener('click', () => {
+      const id = elm.dataset.skin;
+      const skin = SKINS.find(s => s.id === id);
+      if (state.ownedSkins.includes(id)) {
+        state.activeSkin = id;
+        renderAll();
+      } else {
+        if (state.jewels < skin.cost) { showToast('جواهر کافی نیست'); return; }
+        state.jewels -= skin.cost;
+        state.ownedSkins.push(id);
+        state.activeSkin = id;
+        chime([440, 554, 659]);
+        vibrate(25);
+        showToast(`پوسته‌ی ${skin.label} باز شد!`);
+        saveState();
+        renderAll();
+      }
+    });
+  });
+}
+
+/* ============ WHEEL ============ */
+const wheelOverlay = document.getElementById('wheelOverlay');
+const wheelDial = document.getElementById('wheelDial');
+const wheelResultText = document.getElementById('wheelResultText');
+const closeWheelBtn = document.getElementById('closeWheelBtn');
+let wheelSpinning = false;
+
+function openWheel() {
+  if (state.jewels < 15) { showToast('جواهر کافی نیست'); return; }
+  state.jewels -= 15;
+  saveState();
+  renderTopBar();
+  wheelOverlay.classList.add('show');
+  wheelResultText.textContent = '';
+  closeWheelBtn.style.display = 'none';
+  wheelDial.style.transition = 'none';
+  wheelDial.style.transform = 'rotate(0deg)';
+  void wheelDial.offsetWidth;
+  wheelDial.style.transition = 'transform 3s cubic-bezier(.2,.8,.2,1)';
+  const spins = 6 + Math.random() * 2;
+  const finalDeg = spins * 360;
+  wheelDial.style.transform = `rotate(${finalDeg}deg)`;
+  wheelSpinning = true;
+  ensureAudio();
+  setTimeout(() => {
+    const reward = pickWeighted();
+    applyReward(reward);
+    wheelResultText.textContent = '🎉 ' + reward.label + ' برنده شدی!';
+    chime([523, 659, 784, 1046]);
+    vibrate([20, 30, 20, 30, 40]);
+    closeWheelBtn.style.display = 'inline-block';
+    wheelSpinning = false;
+    saveState();
+  }, 3000);
+}
+function pickWeighted() {
+  const total = WHEEL_REWARDS.reduce((s, r) => s + r.weight, 0);
+  let r = Math.random() * total;
+  for (const item of WHEEL_REWARDS) {
+    if (r < item.weight) return item;
+    r -= item.weight;
+  }
+  return WHEEL_REWARDS[0];
+}
+function applyReward(reward) {
+  if (reward.type === 'coins') state.coins += reward.amount;
+  else if (reward.type === 'jewels') state.jewels += reward.amount;
+  else if (reward.type === 'skin') { if (!state.ownedSkins.includes(reward.id)) state.ownedSkins.push(reward.id); }
+  else if (reward.type === 'buff') state.speedBuffUntil = Date.now() + 5 * 60 * 1000;
+}
+closeWheelBtn.addEventListener('click', () => {
+  wheelOverlay.classList.remove('show');
+  renderAll();
+});
+
+/* ============ TABS ============ */
+let activeTab = 'market';
+document.querySelectorAll('.tabBtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    activeTab = btn.dataset.tab;
+    document.querySelectorAll('.tabBtn').forEach(b => b.classList.toggle('active', b === btn));
+    renderTabContent();
+  });
+});
+function renderTabContent() {
+  if (activeTab === 'market') renderMarket();
+  else if (activeTab === 'caravans') renderCaravans();
+  else if (activeTab === 'shop') renderShop();
+}
+
+/* ============ TOP BAR ============ */
+function renderTopBar() {
+  document.getElementById('coinsVal').textContent = fmt(Math.floor(state.coins));
+  document.getElementById('jewelsVal').textContent = fmt(Math.floor(state.jewels));
+}
+
+/* ============ MAIN RENDER + TICK ============ */
+function renderAll() {
+  renderTopBar();
+  renderMap();
+  renderTabContent();
+}
+
+function tick() {
+  let changed = false;
+  state.caravans.forEach(c => {
+    if (c.status === 'traveling' && Date.now() >= c.arriveAt) {
+      c.status = 'arrived';
+      c.cityId = c.destCityId;
+      changed = true;
+      chime([349, 440]);
+      vibrate(20);
+      showToast(`کاروان به ${CITIES[c.cityId].name} رسید!`);
+    }
+  });
+  if (changed) saveState();
+  renderMap();
+  if (activeTab === 'caravans') renderCaravans();
+  if (activeTab === 'market') renderMarket();
+}
+setInterval(tick, 1000);
+
+/* ============ INIT ============ */
+document.body.addEventListener('pointerdown', () => ensureAudio(), { once: true });
+renderAll();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
